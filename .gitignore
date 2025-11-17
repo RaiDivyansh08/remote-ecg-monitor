@@ -1,0 +1,10 @@
+# Arduino / PlatformIO
+*.elf
+*.bin
+*.hex
+*.cpp.o
+*.ino.cpp
+/.pio
+/.vscode
+.DS_Store
+node_modules/

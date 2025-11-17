@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Remote ECG Monitor</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+  <style>
+    body{margin:0;padding:0;font-family:Arial, sans-serif;background:#f6f7fb;display:flex;flex-direction:column;align-items:center;}
+    header{width:100%;background:#fff;padding:15px 0;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.1);font-size:1.4rem;font-weight:bold;}
+    .container{margin-top:30px;width:90%;max-width:900px;background:#fff;padding:25px;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.08);}
+    canvas{width:100% !important;height:350px !important;}
+    #status{margin-top:10px;font-size:1rem;color:#333;text-align:center;}
+    #ipInput{padding:10px;font-size:1rem;width:70%;border-radius:8px;border:1px solid #ccc;}
+    #connectBtn{padding:10px 20px;border:none;border-radius:8px;background:#4a7efc;color:white;font-size:1rem;cursor:pointer;margin-left:10px;}
+    #connectBtn:hover{background:#3c6ae0;}
+  </style>
+</head>
+<body>
+
+<header>Remote ECG Monitoring System</header>
+
+<div class="container">
+  <h3 style="text-align:center;margin-bottom:15px;">Live ECG Graph</h3>
+
+  <div style="text-align:center;margin-bottom:20px;">
+    <input id="ipInput" type="text" placeholder="Enter ESP32 IP (e.g., 192.168.1.50)">
+    <button id="connectBtn">Connect</button>
+  </div>
+
+  <canvas id="ecgChart"></canvas>
+  <div id="status">Not connected</div>
+</div>
+
+<script>
+  let ws;
+  let chart;
+
+  function initChart() {
+    const ctx = document.getElementById('ecgChart').getContext('2d');
+    const MAX_POINTS = 500;
+
+    chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: new Array(MAX_POINTS).fill(""),
+        datasets: [{
+          label: 'ECG Signal',
+          data: new Array(MAX_POINTS).fill(2048),
+          borderWidth: 1,
+          pointRadius: 0,
+          borderColor: '#4a7efc',
+          tension: 0.1
+        }]
+      },
+      options: {
+        animation: false,
+        scales: {
+          x: { display: false },
+          y: { min: 0, max: 4095 }
+        }
+      }
+    });
+  }
+
+  document.getElementById('connectBtn').onclick = () => {
+    const ip = document.getElementById('ipInput').value.trim();
+    if (!ip) return alert('Enter ESP32 IP');
+
+    ws = new WebSocket(`ws://${ip}:81/`);
+
+    ws.onopen = () => {
+      document.getElementById('status').innerText = 'Connected to ESP32';
+    };
+
+    ws.onmessage = (evt) => {
+      const v = parseInt(evt.data);
+      if (isNaN(v)) return;
+      chart.data.datasets[0].data.push(v);
+      if (chart.data.datasets[0].data.length > 500) chart.data.datasets[0].data.shift();
+      chart.update('none');
+    };
+
+    ws.onclose = () => {
+      document.getElementById('status').innerText = 'Disconnected';
+    };
+  };
+
+  initChart();
+</script>
+
+</body>
+</html>
